@@ -24,6 +24,11 @@ machine-mac: &machine-mac
   macos:
     xcode: "8.3.3"
 
+machine-mac-large: &machine-mac-large
+  resource_class: large
+  macos:
+    xcode: "8.3.3"
+
 # Build configurations options.
 env-debug-build: &env-debug-build
   GN_CONFIG: //electron/build/args/debug.gn
@@ -155,6 +160,16 @@ step-install-nodejs-on-mac: &step-install-nodejs-on-mac
         brew update
         brew install node@10
         echo 'export PATH="/usr/local/opt/node@10/bin:$PATH"' >> $BASH_ENV
+      fi
+
+step-install-gnutar-on-mac: &step-install-gnutar-on-mac
+  run:
+    name: Install gnu-tar on macos
+    command: |
+      if [ "`uname`" == "Darwin" ]; then
+        brew update
+        brew install gnu-tar
+        ln -fs /usr/local/bin/gtar /usr/local/bin/tar
       fi
 
 step-gn-gen-default: &step-gn-gen-default
@@ -418,6 +433,8 @@ steps-checkout: &steps-checkout
     - *step-checkout-electron
     - *step-depot-tools-get
     - *step-depot-tools-add-to-path
+    - *step-install-nodejs-on-mac
+    - *step-install-gnutar-on-mac
 
     - restore_cache:
         paths:
@@ -704,11 +721,10 @@ steps-tests: &steps-tests
 #   and attach_workspace take too much time, more than the checkout itself.
 steps-build-mac: &steps-build-mac
   steps:
-    - *step-checkout-electron
-    - *step-depot-tools-get
+    - attach_workspace:
+        at: .
     - *step-depot-tools-add-to-path
     - *step-install-nodejs-on-mac
-    - *step-gclient-sync
     - *step-setup-env-for-build
     - *step-gn-gen-default
 
@@ -750,11 +766,6 @@ steps-build-mac: &steps-build-mac
     # Save all data needed for a further tests run.
     - *step-persist-data-for-tests
 
-filter-only-prs-from-forks: &filter-only-prs-from-forks
-  filters:
-    branches:
-      only: /^pull\/.*$/
-
 chromium-upgrade-branches: &chromium-upgrade-branches
   /chromium\-upgrade\/[0-9]+/
 
@@ -778,6 +789,10 @@ jobs:
     <<: *machine-linux-2xlarge
     environment:
       GCLIENT_EXTRA_ARGS: '--custom-var=apply_patches=False --custom-var=checkout_pyyaml=True'
+    <<: *steps-checkout
+
+  mac-checkout:
+    <<: *machine-mac-large
     <<: *steps-checkout
 
   # Layer 2: Builds.
@@ -996,14 +1011,14 @@ jobs:
     <<: *steps-native-mksnapshot-build
 
   osx-testing:
-    <<: *machine-mac
+    <<: *machine-mac-large
     environment:
       <<: *env-testing-build
       <<: *env-enable-sccache
     <<: *steps-build-mac
 
   mas-testing:
-    <<: *machine-mac
+    <<: *machine-mac-large
     environment:
       <<: *env-mas
       <<: *env-testing-build
@@ -1187,19 +1202,24 @@ workflows:
           requires:
             - linux-checkout
 
-  build-mac-fork-prs:
+  build-mac:
     jobs:
+      - mac-checkout
       - osx-testing:
-         <<: *filter-only-prs-from-forks
-      - osx-testing-tests:
-          <<: *filter-only-prs-from-forks
+          requires:
+            - mac-checkout
+
+      - mac-tests:
+          name: osx-testing-tests
           requires:
             - osx-testing
 
       - mas-testing:
-          <<: *filter-only-prs-from-forks
-      - mas-testing-tests:
-          <<: *filter-only-prs-from-forks
+          requires:
+            - mac-checkout
+
+      - mac-tests:
+          name: mas-testing-tests
           requires:
             - mas-testing
 

@@ -1209,8 +1209,7 @@ workflows:
           requires:
             - mac-checkout
 
-      - mac-tests:
-          name: osx-testing-tests
+      - osx-testing-tests:
           requires:
             - osx-testing
 
@@ -1218,8 +1217,7 @@ workflows:
           requires:
             - mac-checkout
 
-      - mac-tests:
-          name: mas-testing-tests
+      - mas-testing-tests:
           requires:
             - mas-testing
 

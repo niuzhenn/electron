@@ -383,7 +383,8 @@ void WebContentsPreferences::OverrideWebkitPrefs(
       IsEnabled("textAreasAreResizable", true /* default_value */);
   prefs->navigate_on_drag_drop =
       IsEnabled("navigateOnDragDrop", false /* default_value */);
-  if (!GetAsAutoplayPolicy(&preference_, "autoplayPolicy", &prefs->autoplay_policy)) {
+  if (!GetAsAutoplayPolicy(&preference_, "autoplayPolicy",
+                           &prefs->autoplay_policy)) {
     prefs->autoplay_policy = content::AutoplayPolicy::kNoUserGestureRequired;
   }
 
